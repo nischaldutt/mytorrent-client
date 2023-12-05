@@ -1,5 +1,9 @@
 {
+  "type": "module",
   "dependencies": {
     "bencode": "^4.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }
