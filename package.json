@@ -1,7 +1,10 @@
 {
   "type": "module",
   "dependencies": {
-    "bencode": "^4.0.0"
+    "bencode": "^4.0.0",
+    "buffer": "^6.0.3",
+    "dgram": "^1.0.1",
+    "url": "^0.11.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
