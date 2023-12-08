@@ -1,6 +1,7 @@
 "use strict";
 
 import dgram from "dgram";
+import crypto from "crypto";
 import { Buffer } from "buffer";
 import { URL } from "url";
 
@@ -34,9 +35,29 @@ function udpSend(socket, message, urlObj, callback = () => {}) {
 
 function respType(resp) {}
 
-function buildConnectReq() {}
+function buildConnectReq() {
+  const buf = Buffer.alloc(16);
 
-function parseConnectResp(resp) {}
+  // connection id
+  buf.writeUInt32BE(0x417, 0);
+  buf.writeUInt32BE(0x27101980, 4);
+
+  // action
+  buf.writeUInt32BE(0, 8);
+
+  // transaction id
+  crypto.randomBytes(4).copy(buf, 12);
+
+  return buf;
+}
+
+function parseConnectResp(resp) {
+  return {
+    action: resp.readUInt32BE(0),
+    transactionId: resp.readUInt32BE(4),
+    connectionId: resp.slice(8),
+  };
+}
 
 function buildAnnounceReq(connId) {}
 
