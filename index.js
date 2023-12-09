@@ -4,8 +4,9 @@ import fs from "fs";
 import bencode from "bencode";
 
 import * as tracker from "./tracker";
+import * as torrentParser from "./torrent-parser";
 
-const torrent = bencode.decode(fs.readFileSync("puppy.torrent"));
+const torrent = torrentParser.open("puppy.torrent");
 
 tracker.getPeers(torrent, (peers) => {
   console.log({ peers });
