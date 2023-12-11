@@ -16,6 +16,7 @@ export function size(torrent) {
         .reduce((acc, curr) => acc + curr)
     : torrent.info.length;
 
+  // file size might be larger than 32-bit integer
   return bignum.toBuffer(size, { size: 8 });
 }
 

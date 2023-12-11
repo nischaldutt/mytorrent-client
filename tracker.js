@@ -5,6 +5,9 @@ import crypto from "crypto";
 import { Buffer } from "buffer";
 import { URL } from "url";
 
+import * as util from "./util";
+import * as torrentParser from "./torrent-parser";
+
 export const getPeers = (torrent, callback) => {
   const socket = dgram.createSocket("udp4");
   const torrentUrlObj = new URL(torrent.announce.toString("utf8"));
@@ -72,6 +75,39 @@ function buildAnnounceReq(connId, torrent, port = 6881) {
   crypto.randomBytes(4).copy(buf, 12);
 
   // info hash
+  torrentParser.infoHash(torrent).copy(buf, 16);
+
+  // peer id
+  util.genId().copy(buf, 36);
+
+  // downloaded
+  Buffer.alloc(8).copy(buf, 56);
+
+  // left
+  torrentParser.size(torrent).copy(buf, 64);
+
+  // uploaded
+  Buffer.alloc(8).copy(buf, 72);
+
+  // event
+  // 0: none; 1: completed; 2: started; 3: stopped
+  buf.writeUInt32BE(0, 80);
+
+  // ip address
+  // 0 default
+  buf.writeUInt32BE(0, 80);
+
+  // key
+  crypto.randomBytes(4).copy(buf, 88);
+
+  // num want
+  // -1 default
+  buf.writeInt32BE(-1, 92);
+
+  // port
+  buf.writeUInt16BE(port, 96);
+
+  return buf;
 }
 
 function parseAnnounceResp(resp) {
