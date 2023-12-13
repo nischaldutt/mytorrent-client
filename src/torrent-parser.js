@@ -3,7 +3,7 @@
 import fs from "fs";
 import bencode from "bencode";
 import crypto from "crypto";
-import bignum from "bignum";
+import { toBufferBE } from "bigint-buffer";
 
 export function open(filePath) {
   return bencode.decode(fs.readFileSync(filePath));
@@ -17,7 +17,7 @@ export function size(torrent) {
     : torrent.info.length;
 
   // file size might be larger than 32-bit integer
-  return bignum.toBuffer(size, { size: 8 });
+  return toBufferBE(size, 8);
 }
 
 export function infoHash(torrent) {

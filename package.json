@@ -2,7 +2,7 @@
   "type": "module",
   "dependencies": {
     "bencode": "^4.0.0",
-    "bignum": "^0.13.1",
+    "bigint-buffer": "^1.1.5",
     "buffer": "^6.0.3",
     "dgram": "^1.0.1",
     "url": "^0.11.3"
