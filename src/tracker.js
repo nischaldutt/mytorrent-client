@@ -36,7 +36,11 @@ function udpSend(socket, message, urlObj, callback = () => {}) {
   socket.send(message, 0, message.length, urlObj.port, urlObj.host, callback);
 }
 
-function respType(resp) {}
+function respType(resp) {
+  const action = resp.readUInt32BE(0);
+  if (action === 0) return "connect";
+  if (action === 1) return "announce";
+}
 
 function buildConnectReq() {
   const buf = Buffer.alloc(16);
