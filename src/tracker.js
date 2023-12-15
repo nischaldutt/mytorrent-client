@@ -1,5 +1,6 @@
 "use strict";
 
+import bencode from "bencode";
 import dgram from "dgram";
 import crypto from "crypto";
 import { Buffer } from "buffer";
@@ -10,7 +11,7 @@ import * as torrentParser from "./torrent-parser.js";
 
 export const getPeers = (torrent, callback) => {
   const socket = dgram.createSocket("udp4");
-  const torrentUrlObj = new URL(torrent.announce.toString("utf8"));
+  const torrentUrlObj = new URL(new TextDecoder().decode(torrent.announce));
 
   // 1. send connect request
   udpSend(socket, buildConnectReq(), torrentUrlObj);
