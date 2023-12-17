@@ -10,6 +10,9 @@ import * as util from "./util.js";
 import * as torrentParser from "./torrent-parser.js";
 
 /*
+ * The handshake is a required message and must be the first message transmitted 
+ * by the client. It is (49+len(pstr)) bytes long.
+
  * handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
 
  * pstrlen: string length of <pstr>, as a single raw byte
