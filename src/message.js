@@ -9,6 +9,16 @@ import { Buffer } from "buffer";
 import * as util from "./util.js";
 import * as torrentParser from "./torrent-parser.js";
 
+/*
+ * handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
+
+ * pstrlen: string length of <pstr>, as a single raw byte
+ * pstr: string identifier of the protocol
+ * reserved: eight (8) reserved bytes. All current implementations use all zeroes.
+ * peer_id: 20-byte string used as a unique ID for the client.
+
+ * In version 1.0 of the BitTorrent protocol, pstrlen = 19, and pstr = "BitTorrent protocol". 
+ */
 export function buildHandshake(torrent) {
   const buf = Buffer.alloc(68);
 
