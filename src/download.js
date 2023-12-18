@@ -4,21 +4,26 @@ import net from "net";
 import { Buffer } from "buffer";
 
 import * as tracker from "./tracker.js";
+import * as message from "./message.js";
 
 export default function (torrent) {
   tracker.getPeers(torrent, (peers) => {
-    peers.forEach(download);
+    peers.forEach((peer) => download(peer, torrent));
   });
 }
 
-function download(peer) {
+function download(peer, torrent) {
   const socket = net.Socket();
 
   socket.on("error", console.log);
 
-  socket.connnect(peer.port, peer.ip, () => {});
+  socket.connnect(peer.port, peer.ip, () => {
+    socket.write(message.buildHandshake(torrent));
+  });
 
-  onWholeMessage(socket, (data) => {});
+  onWholeMessage(socket, (msg) => {
+    messageHandler(msg, socket);
+  });
 }
 
 function onWholeMessage(socket, callback) {
@@ -39,4 +44,17 @@ function onWholeMessage(socket, callback) {
       handshake = false;
     }
   });
+}
+
+function messageHandler(msg, socket) {
+  if (isHandshake(msg)) {
+    socket.write(message.buildInterested());
+  }
+}
+
+function isHandshake(msg) {
+  return (
+    msg.length === msg.readUInt8(0) + 49 &&
+    msg.toString("utf8", 1) === "BitTorrent protocol"
+  );
 }
