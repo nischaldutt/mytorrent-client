@@ -61,6 +61,18 @@ function messageHandler(msg, socket) {
         unchokeHandler();
         break;
       }
+      case 4: {
+        haveHandler(parsedMsg.payload);
+        break;
+      }
+      case 5: {
+        bitfieldHandler(parsedMsg.payload);
+        break;
+      }
+      case 7: {
+        pieceHandler(parsedMsg.payload);
+        break;
+      }
     }
   }
 }
@@ -75,3 +87,9 @@ function isHandshake(msg) {
 function chokeHandler() {}
 
 function unchokeHandler() {}
+
+function haveHandler(payload) {}
+
+function bitfieldHandler(payload) {}
+
+function pieceHandler(payload) {}
