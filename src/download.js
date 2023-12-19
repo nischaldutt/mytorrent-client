@@ -49,6 +49,19 @@ function onWholeMessage(socket, callback) {
 function messageHandler(msg, socket) {
   if (isHandshake(msg)) {
     socket.write(message.buildInterested());
+  } else {
+    const parsedMsg = message.parse(msg);
+
+    switch (parsedMsg.id) {
+      case 0: {
+        chokeHandler();
+        break;
+      }
+      case 1: {
+        unchokeHandler();
+        break;
+      }
+    }
   }
 }
 
@@ -58,3 +71,7 @@ function isHandshake(msg) {
     msg.toString("utf8", 1) === "BitTorrent protocol"
   );
 }
+
+function chokeHandler() {}
+
+function unchokeHandler() {}
