@@ -5,18 +5,17 @@ import { Buffer } from "buffer";
 
 import * as tracker from "./tracker.js";
 import * as message from "./message.js";
+import Pieces from "./Pieces.js";
 
 export default function (torrent) {
-  const requested = [];
-
   tracker.getPeers(torrent, (peers) => {
-    peers.forEach((peer) => download(peer, torrent, requested));
+    const pieces = new Piece(torrent.info.pieces.length / 20);
+    peers.forEach((peer) => download(peer, torrent, pieces));
   });
 }
 
-function download(peer, torrent, requested) {
+function download(peer, torrent, pieces) {
   const socket = net.Socket();
-  const queue = [];
 
   socket.on("error", console.log);
 
@@ -24,8 +23,9 @@ function download(peer, torrent, requested) {
     socket.write(message.buildHandshake(torrent));
   });
 
+  const queue = { choked: true, queue: [] };
   onWholeMessage(socket, (msg) => {
-    messageHandler(msg, socket, requested, queue);
+    messageHandler(msg, socket, pieces, queue);
   });
 }
 
@@ -49,7 +49,7 @@ function onWholeMessage(socket, callback) {
   });
 }
 
-function messageHandler(msg, socket, requested, queue) {
+function messageHandler(msg, socket, pieces, queue) {
   if (isHandshake(msg)) {
     socket.write(message.buildInterested());
   } else {
@@ -57,11 +57,11 @@ function messageHandler(msg, socket, requested, queue) {
 
     switch (parsedMsg.id) {
       case 0: {
-        chokeHandler();
+        chokeHandler(socket);
         break;
       }
       case 1: {
-        unchokeHandler();
+        unchokeHandler(socket, pieces, queue);
         break;
       }
       case 4: {
@@ -87,9 +87,14 @@ function isHandshake(msg) {
   );
 }
 
-function chokeHandler() {}
+function chokeHandler(socket) {
+  socket.end();
+}
 
-function unchokeHandler() {}
+function unchokeHandler(socket, pieces, queue) {
+  queue.choked = false;
+  requestPiece(socket, pieces, queue);
+}
 
 function haveHandler(payload, socket, requested, queue) {
   const pieceIndex = payload.readUInt32BE(0);
@@ -113,6 +118,16 @@ function pieceHandler(payload, socket, requested, queue) {
 }
 
 function requestPiece(socket, requested, queue) {
+  if (queue.choked) return null;
+
+  while (queue.queue.length) {
+    const pieceIndex = queue.shift();
+    if (pieces.needed(pieceIndex)) {
+      socket.write(message.buildRequest(pieceIndex));
+      pieces.addRequested(pieceIndex);
+      break;
+    }
+  }
   if (requested[queue[0]]) {
     queue.shift();
   } else {
