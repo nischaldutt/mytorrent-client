@@ -75,7 +75,7 @@ export function buildChoke() {
   const buf = Buffer.alloc(5);
 
   // length of the message
-  buf.writeUint32BE(1, 0);
+  buf.writeUInt32BE(1, 0);
 
   // id of the message
   buf.writeUInt8(0, 4);
@@ -104,7 +104,7 @@ export function buildUnChoke() {
  * The interested message is fixed-length and has no payload.
  */
 export function buildInterested() {
-  const buf = Buffer.alloc(8);
+  const buf = Buffer.alloc(5);
 
   // length of the message
   buf.writeUInt32BE(1, 0);

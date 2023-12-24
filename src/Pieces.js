@@ -15,7 +15,9 @@ export default class {
   }
 
   needed(pieceIndex) {
+    // check if every piece has been requested once
     if (this.requested.every((x) => x === true)) {
+      // then copy received to requested
       // using slice() method here to return a copy of an array
       this.requested = this.received.slice();
     }

@@ -9,6 +9,8 @@ import Pieces from "./Pieces.js";
 
 export default function (torrent) {
   tracker.getPeers(torrent, (peers) => {
+    // torrent.info.pieces is a buffer that contains 20-byte SHA-1 hash of each piece,
+    // and the length gives you the total number of bytes in the buffer.
     const pieces = new Piece(torrent.info.pieces.length / 20);
     peers.forEach((peer) => download(peer, torrent, pieces));
   });
@@ -23,6 +25,8 @@ function download(peer, torrent, pieces) {
     socket.write(message.buildHandshake(torrent));
   });
 
+  // queue is a list per connection that contains
+  // all the pieces that a single peer has
   const queue = { choked: true, queue: [] };
   onWholeMessage(socket, (msg) => {
     messageHandler(msg, socket, pieces, queue);
@@ -35,10 +39,11 @@ function onWholeMessage(socket, callback) {
 
   socket.on("data", (recievedBuffer) => {
     // msgLength calculates the length of whole message in bytes
-    const msgLength = () =>
-      handshake
+    function msgLength() {
+      return handshake
         ? savedBuffer.readUInt8(0) + 49
-        : savedBuffer.readUInt32BE(0) + 4;
+        : savedBuffer.readInt32BE(0) + 4;
+    }
     savedBuffer = Buffer.concat([savedBuffer, recievedBuffer]);
 
     while (savedBuffer.length >= 4 && savedBuffer.length >= msgLength()) {
@@ -65,7 +70,7 @@ function messageHandler(msg, socket, pieces, queue) {
         break;
       }
       case 4: {
-        haveHandler(parsedMsg.payload, socket, requested, queue);
+        haveHandler(parsedMsg.payload, socket, pieces, queue);
         break;
       }
       case 5: {
@@ -73,7 +78,7 @@ function messageHandler(msg, socket, pieces, queue) {
         break;
       }
       case 7: {
-        pieceHandler(parsedMsg.payload, socket, requested, queue);
+        pieceHandler(parsedMsg.payload, socket, pieces, queue);
         break;
       }
     }
@@ -117,7 +122,7 @@ function pieceHandler(payload, socket, requested, queue) {
   requestPiece(socket, requested, queue);
 }
 
-function requestPiece(socket, requested, queue) {
+function requestPiece(socket, pieces, queue) {
   if (queue.choked) return null;
 
   while (queue.queue.length) {
@@ -127,10 +132,5 @@ function requestPiece(socket, requested, queue) {
       pieces.addRequested(pieceIndex);
       break;
     }
-  }
-  if (requested[queue[0]]) {
-    queue.shift();
-  } else {
-    socket.write(message.buildRequest(pieceIndex));
   }
 }
