@@ -3,7 +3,7 @@
 import fs from "fs";
 import bencode from "bencode";
 import crypto from "crypto";
-import { toBufferBE } from "bigint-buffer";
+import { toBufferBE, toBigIntBE } from "bigint-buffer";
 
 export function open(filePath) {
   return bencode.decode(fs.readFileSync(filePath));
@@ -23,4 +23,28 @@ export function size(torrent) {
 export function infoHash(torrent) {
   const info = bencode.decode(torrent.info);
   return crypto.createHash("sha1").update(info).digest();
+}
+
+export const BLOCK_LENGTH = Math.pow(2, 14);
+
+export function pieceLen(torrent, pieceIndex) {
+  const totalLength = toBigIntBE(size(torrent));
+  const pieceLength = torrent.info["piece length"];
+  const lastPieceLength = totalLength % pieceLength;
+  const lastPieceIndex = Math.floor(totalLength / pieceLength);
+
+  return lastPieceIndex === pieceIndex ? lastPieceLength : pieceLength;
+}
+
+export function blocksPerPiece(torrent, pieceIndex) {
+  const pieceLength = pieceLen(torrent, pieceIndex);
+  return Math.ceil(pieceLength / BLOCK_LENGTH);
+}
+
+export function blockLen(torrent, pieceIndex, blockIndex) {
+  const pieceLength = pieceLen(torrent, pieceIndex);
+  const lastPieceLength = pieceLength % BLOCK_LENGTH;
+  const lastPieceIndex = Math.floor(lastPieceLength / BLOCK_LENGTH);
+
+  return blockIndex === lastPieceIndex ? lastPieceLength : BLOCK_LENGTH;
 }
