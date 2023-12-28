@@ -6,12 +6,11 @@ import { Buffer } from "buffer";
 import * as tracker from "./tracker.js";
 import * as message from "./message.js";
 import Pieces from "./Pieces.js";
+import Queue from "./Queue.js";
 
 export default function (torrent) {
   tracker.getPeers(torrent, (peers) => {
-    // torrent.info.pieces is a buffer that contains 20-byte SHA-1 hash of each piece,
-    // and the length gives you the total number of bytes in the buffer.
-    const pieces = new Piece(torrent.info.pieces.length / 20);
+    const pieces = new Pieces(torrent);
     peers.forEach((peer) => download(peer, torrent, pieces));
   });
 }
@@ -27,7 +26,7 @@ function download(peer, torrent, pieces) {
 
   // queue is a list per connection that contains
   // all the pieces that a single peer has
-  const queue = { choked: true, queue: [] };
+  const queue = new Queue(torrent);
   onWholeMessage(socket, (msg) => {
     messageHandler(msg, socket, pieces, queue);
   });
@@ -125,11 +124,11 @@ function pieceHandler(payload, socket, requested, queue) {
 function requestPiece(socket, pieces, queue) {
   if (queue.choked) return null;
 
-  while (queue.queue.length) {
-    const pieceIndex = queue.shift();
-    if (pieces.needed(pieceIndex)) {
-      socket.write(message.buildRequest(pieceIndex));
-      pieces.addRequested(pieceIndex);
+  while (queue.length()) {
+    const pieceBlock = queue.deque();
+    if (pieces.needed(pieceBlock)) {
+      socket.write(message.buildRequest(pieceBlock));
+      pieces.addRequested(pieceBlock);
       break;
     }
   }

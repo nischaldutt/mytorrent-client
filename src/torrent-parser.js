@@ -43,8 +43,8 @@ export function blocksPerPiece(torrent, pieceIndex) {
 
 export function blockLen(torrent, pieceIndex, blockIndex) {
   const pieceLength = pieceLen(torrent, pieceIndex);
-  const lastPieceLength = pieceLength % BLOCK_LENGTH;
-  const lastPieceIndex = Math.floor(lastPieceLength / BLOCK_LENGTH);
+  const lastBlockLength = pieceLength % BLOCK_LENGTH;
+  const lastBlockIndex = Math.floor(lastBlockLength / BLOCK_LENGTH);
 
-  return blockIndex === lastPieceIndex ? lastPieceLength : BLOCK_LENGTH;
+  return blockIndex === lastBlockIndex ? lastBlockLength : BLOCK_LENGTH;
 }

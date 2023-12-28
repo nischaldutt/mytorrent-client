@@ -4,11 +4,12 @@ import * as torrentParser from "./torrent-parser.js";
 
 export class Queue {
   constructor(torrent) {
-    this._torrent = torrent;
+    // "_" signifies private variables
+    this._torrent = torrent; // private
     // queue is a list per connection that contains
     // all the pieces that a single peer has
-    this._queue = [];
-    this.choked = true;
+    this._queue = []; // private
+    this.choked = true; // public
   }
 
   queue(pieceIndex) {
