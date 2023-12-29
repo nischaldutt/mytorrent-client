@@ -1,5 +1,6 @@
 "use strict";
 
+import fs from "fs";
 import net from "net";
 import { Buffer } from "buffer";
 
@@ -8,10 +9,11 @@ import * as message from "./message.js";
 import Pieces from "./Pieces.js";
 import Queue from "./Queue.js";
 
-export default function (torrent) {
+export default function (torrent, path) {
   tracker.getPeers(torrent, (peers) => {
     const pieces = new Pieces(torrent);
-    peers.forEach((peer) => download(peer, torrent, pieces));
+    const file = fs.openSync(path, "w");
+    peers.forEach((peer) => download(peer, torrent, pieces, file));
   });
 }
 
@@ -122,9 +124,24 @@ function bitfieldHandler(socket, pieces, queue, payload) {
   if (queueEmpty) requestPiece(socket, pieces, queue);
 }
 
-function pieceHandler(payload, socket, requested, queue) {
-  queue.shift();
-  requestPiece(socket, requested, queue);
+function pieceHandler(socket, pieces, queue, torrent, file, pieceResp) {
+  console.log(pieceResp);
+  pieces.addReceived(pieceResp);
+
+  // write to file here
+  const offset =
+    pieceResp.index * torrent.info["piece length"] + pieceResp.begin;
+  fs.write(file, pieceResp.block, 0, pieceResp.block.length, offset, () => {});
+
+  if (pieces.isDone()) {
+    console.log("DONE!");
+    socket.end();
+    try {
+      fs.closeSync(file);
+    } catch (e) {}
+  } else {
+    requestPiece(socket, pieces, queue);
+  }
 }
 
 function requestPiece(socket, pieces, queue) {
