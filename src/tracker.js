@@ -1,6 +1,5 @@
 "use strict";
 
-import bencode from "bencode";
 import dgram from "dgram";
 import crypto from "crypto";
 import { Buffer } from "buffer";
@@ -125,7 +124,7 @@ function parseAnnounceResp(resp) {
   }
 
   return {
-    action: resp.readUIntBE(0),
+    action: resp.readUInt32BE(0),
     transactionId: resp.readUInt32BE(4),
     leecher: resp.readUInt32BE(8),
     seeders: resp.readUInt32BE(12),

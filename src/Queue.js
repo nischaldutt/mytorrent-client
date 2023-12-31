@@ -2,7 +2,7 @@
 
 import * as torrentParser from "./torrent-parser.js";
 
-export class Queue {
+export default class Queue {
   constructor(torrent) {
     // "_" signifies private variables
     this._torrent = torrent; // private

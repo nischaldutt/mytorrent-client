@@ -7,7 +7,7 @@ export default class Pieces {
     /*
      *  @returns
      *  an array of arrays, where the inner arrays hold the status
-     *  of a block at a give piece index. So if you wanted to find
+     *  of a block at a given piece index. So if you wanted to find
      *  out the status of a block at index 1 for a piece at index 7,
      *  you could look up _requested[7][1] and check if it’s set to true
      */

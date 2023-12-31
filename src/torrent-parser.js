@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { toBufferBE, toBigIntBE } from "bigint-buffer";
 
 export function open(filePath) {
+  // console.log(bencode.decode(fs.readFileSync(filePath), "utf8"));
   return bencode.decode(fs.readFileSync(filePath));
 }
 
@@ -44,7 +45,7 @@ export function blocksPerPiece(torrent, pieceIndex) {
 export function blockLen(torrent, pieceIndex, blockIndex) {
   const pieceLength = pieceLen(torrent, pieceIndex);
   const lastBlockLength = pieceLength % BLOCK_LENGTH;
-  const lastBlockIndex = Math.floor(lastBlockLength / BLOCK_LENGTH);
+  const lastBlockIndex = Math.floor(pieceLength / BLOCK_LENGTH);
 
   return blockIndex === lastBlockIndex ? lastBlockLength : BLOCK_LENGTH;
 }

@@ -17,7 +17,7 @@ export default function (torrent, path) {
   });
 }
 
-function download(peer, torrent, pieces) {
+function download(peer, torrent, pieces, file) {
   const socket = net.Socket();
 
   socket.on("error", console.log);
@@ -30,7 +30,7 @@ function download(peer, torrent, pieces) {
   // all the pieces that a single peer has
   const queue = new Queue(torrent);
   onWholeMessage(socket, (msg) => {
-    messageHandler(msg, socket, pieces, queue);
+    messageHandler(msg, socket, pieces, queue, torrent, file);
   });
 }
 
@@ -55,7 +55,7 @@ function onWholeMessage(socket, callback) {
   });
 }
 
-function messageHandler(msg, socket, pieces, queue) {
+function messageHandler(msg, socket, pieces, queue, torrent, file) {
   if (isHandshake(msg)) {
     socket.write(message.buildInterested());
   } else {
@@ -71,15 +71,15 @@ function messageHandler(msg, socket, pieces, queue) {
         break;
       }
       case 4: {
-        haveHandler(parsedMsg.payload, socket, pieces, queue);
+        haveHandler(socket, pieces, queue, parsedMsg.payload);
         break;
       }
       case 5: {
-        bitfieldHandler(parsedMsg.payload);
+        bitfieldHandler(socket, pieces, queue, parsedMsg.payload);
         break;
       }
       case 7: {
-        pieceHandler(parsedMsg.payload, socket, pieces, queue);
+        pieceHandler(socket, pieces, queue, torrent, file, parsedMsg.payload);
         break;
       }
     }

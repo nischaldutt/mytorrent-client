@@ -11,7 +11,7 @@ import * as torrentParser from "./torrent-parser.js";
 
 /*
  * The handshake is a required message and must be the first message transmitted 
- * by the client. It is (49+len(pstr)) bytes long.
+ * by the client. It is (49 + len(pstr)) bytes long.
 
  * handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
 
@@ -132,6 +132,7 @@ export function buildNotInterested() {
 }
 /*
  * have: <len=0005><id=4><piece index>
+ * len = 4 bytes, id = 1 byte, pieceIndex = 4 bytes
  * The have message is fixed length. The payload is the zero-based
  * index of a piece that has just been successfully downloaded and
  * verified via the hash.
@@ -282,6 +283,7 @@ export function buildPort(payload) {
 }
 
 export function parse(msg) {
+  const size = msg.readInt32BE(0);
   const id = msg.length > 4 ? msg.readInt8(4) : null;
   let payload = msg.length > 5 ? msg.slice(5) : null;
 
@@ -294,9 +296,5 @@ export function parse(msg) {
     payload[id === 7 ? "block" : "length"] = rest;
   }
 
-  return {
-    size: msg.readInt32BE(0),
-    id,
-    payload,
-  };
+  return { size, id, payload };
 }
