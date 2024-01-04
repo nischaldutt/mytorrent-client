@@ -11,6 +11,7 @@ import * as torrentParser from "./torrent-parser.js";
 export const getPeers = (torrent, callback) => {
   const socket = dgram.createSocket("udp4");
   const torrentUrlObj = new URL(new TextDecoder().decode(torrent.announce));
+  console.log({ torrentUrlObj });
 
   // 1. send connect request
   udpSend(socket, buildConnectReq(), torrentUrlObj);
@@ -19,6 +20,7 @@ export const getPeers = (torrent, callback) => {
     if (respType(response) === "connect") {
       // 2. receive and parse the connect response
       const connResp = parseConnectResp(response);
+      console.log("===== received connect response =====", connResp);
 
       // 3. send announce request
       const announceReq = buildAnnounceReq(connResp.connectionId, torrent);
@@ -26,14 +28,30 @@ export const getPeers = (torrent, callback) => {
     } else if (respType(response) === "announce") {
       // 4. parse announce response
       const announceResp = parseAnnounceResp(response);
+      console.log("===== received announce response =====", announceResp);
+
       // 5. pass peers to callback
       callback(announceResp.peers);
     }
   });
 };
 
-function udpSend(socket, message, urlObj, callback = () => {}) {
-  socket.send(message, 0, message.length, urlObj.port, urlObj.host, callback);
+function udpSend(
+  socket,
+  message,
+  urlObj,
+  callback = (err) => {
+    console.log({ udp_send_error: err });
+  }
+) {
+  socket.send(
+    message,
+    0,
+    message.length,
+    urlObj.port,
+    urlObj.hostname,
+    callback
+  );
 }
 
 function respType(resp) {
