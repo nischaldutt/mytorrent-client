@@ -50,4 +50,23 @@ export default class Pieces {
   isDone() {
     return this._received.every((blocks) => blocks.every((i) => i));
   }
+
+  totalBlocks() {
+    const flat = this._requested.map((piece) => {
+      return piece.reduce((count, _) => count + 1, 0);
+    });
+
+    return flat.reduce((acc, curr) => acc + curr, 0);
+  }
+
+  totalReceivedBlocks() {
+    const flat = this._received.map((piece) => {
+      return piece.reduce(
+        (count, blockStatus) => (blockStatus ? count + 1 : count),
+        0
+      );
+    });
+
+    return flat.reduce((acc, curr) => acc + curr, 0);
+  }
 }
