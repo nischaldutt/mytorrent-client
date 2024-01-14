@@ -11,24 +11,32 @@ import Queue from "./Queue.js";
 
 export default function (torrent, path) {
   tracker.getPeers(torrent, (peers) => {
+    console.log({ peers });
+
     const pieces = new Pieces(torrent);
+    console.log("====== initial pieces arrray =====", pieces);
+
     const file = fs.openSync(path, "w");
     peers.forEach((peer) => download(peer, torrent, pieces, file));
   });
 }
 
 function download(peer, torrent, pieces, file) {
-  const socket = net.Socket();
+  const socket = new net.Socket();
 
-  socket.on("error", console.log);
+  socket.on("error", (err) => {
+    return { tcp_peer_connect_error: err };
+  });
 
-  socket.connnect(peer.port, peer.ip, () => {
+  socket.connect(peer.port, peer.ip, () => {
+    console.log("===== connecting with peer: " + peer.ip + " =====");
     socket.write(message.buildHandshake(torrent));
   });
 
   // queue is a list per connection that contains
   // all the pieces that a single peer has
   const queue = new Queue(torrent);
+
   onWholeMessage(socket, (msg) => {
     messageHandler(msg, socket, pieces, queue, torrent, file);
   });
@@ -57,28 +65,36 @@ function onWholeMessage(socket, callback) {
 
 function messageHandler(msg, socket, pieces, queue, torrent, file) {
   if (isHandshake(msg)) {
+    console.log("===== handshake successfull ====");
+
     socket.write(message.buildInterested());
   } else {
     const parsedMsg = message.parse(msg);
+    // console.log({ parsedMsg });
 
     switch (parsedMsg.id) {
       case 0: {
+        console.log({ choked_msg_received: parsedMsg });
         chokeHandler(socket);
         break;
       }
       case 1: {
+        console.log({ unchoked_msg_received: parsedMsg });
         unchokeHandler(socket, pieces, queue);
         break;
       }
       case 4: {
+        console.log({ have_msg_received: parsedMsg });
         haveHandler(socket, pieces, queue, parsedMsg.payload);
         break;
       }
       case 5: {
+        console.log({ bitfield_msg_received: parsedMsg });
         bitfieldHandler(socket, pieces, queue, parsedMsg.payload);
         break;
       }
       case 7: {
+        console.log({ pieceblock_msg_received: parsedMsg });
         pieceHandler(socket, pieces, queue, torrent, file, parsedMsg.payload);
         break;
       }
@@ -124,22 +140,40 @@ function bitfieldHandler(socket, pieces, queue, payload) {
   if (queueEmpty) requestPiece(socket, pieces, queue);
 }
 
-function pieceHandler(socket, pieces, queue, torrent, file, pieceResp) {
-  console.log(pieceResp);
-  pieces.addReceived(pieceResp);
+function pieceHandler(socket, pieces, queue, torrent, file, pieceBlock) {
+  console.log(
+    "===== received a block at piece index: " + pieceBlock.index + " ====="
+  );
+
+  pieces.addReceived(pieceBlock);
 
   // write to file here
   const offset =
-    pieceResp.index * torrent.info["piece length"] + pieceResp.begin;
-  fs.write(file, pieceResp.block, 0, pieceResp.block.length, offset, () => {});
+    pieceBlock.index * torrent.info["piece length"] + pieceBlock.begin;
+  fs.write(
+    file,
+    pieceBlock.block,
+    0,
+    pieceBlock.block.length,
+    offset,
+    () => {}
+  );
 
   if (pieces.isDone()) {
-    console.log("DONE!");
+    console.log("********** DOWNLOAD COMPLETE **********");
     socket.end();
     try {
       fs.closeSync(file);
-    } catch (e) {}
+    } catch (err) {
+      console.log({ error_while_closing_file: err });
+    }
   } else {
+    console.log("********** NOT DONE YET **********");
+    console.log({
+      pieceIndex: pieceBlock.index,
+      totalBlocks: pieces.totalBlocks(),
+      totalReceivedBlocks: pieces.totalReceivedBlocks(),
+    });
     requestPiece(socket, pieces, queue);
   }
 }
@@ -150,6 +184,7 @@ function requestPiece(socket, pieces, queue) {
   while (queue.length()) {
     const pieceBlock = queue.deque();
     if (pieces.needed(pieceBlock)) {
+      console.log("===== requesting piece block =====", pieceBlock);
       socket.write(message.buildRequest(pieceBlock));
       pieces.addRequested(pieceBlock);
       break;
