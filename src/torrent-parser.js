@@ -36,7 +36,6 @@ export function pieceLen(torrent, pieceIndex) {
   // console.log({ totalLength, pieceLength });
 
   const lastPieceLength = totalLength % pieceLength;
-  // const lastPieceIndex = Math.floor(BigInt(totalLength) / BigInt(pieceLength));
   const lastPieceIndex = Math.floor(totalLength / pieceLength);
   // console.log({
   //   lastPieceIndex: Math.floor(totalLength / pieceLength),
