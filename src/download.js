@@ -11,10 +11,10 @@ import Queue from "./Queue.js";
 
 export default function (torrent, path) {
   tracker.getPeers(torrent, (peers) => {
-    console.log({ peers });
+    // console.log({ peers });
 
     const pieces = new Pieces(torrent);
-    console.log("====== initial pieces arrray =====", pieces);
+    // console.log("\n====== initial pieces arrray =====", pieces);
 
     const file = fs.openSync(path, "w");
     peers.forEach((peer) => download(peer, torrent, pieces, file));
@@ -29,7 +29,7 @@ function download(peer, torrent, pieces, file) {
   });
 
   socket.connect(peer.port, peer.ip, () => {
-    console.log("===== connecting with peer: " + peer.ip + " =====");
+    console.log("\n===== connecting with peer: " + peer.ip + " =====\n");
     socket.write(message.buildHandshake(torrent));
   });
 
@@ -38,6 +38,7 @@ function download(peer, torrent, pieces, file) {
   const queue = new Queue(torrent);
 
   onWholeMessage(socket, (msg) => {
+    // console.log("\n******* received complete message *******\n");
     messageHandler(msg, socket, pieces, queue, torrent, file);
   });
 }
@@ -57,7 +58,7 @@ function onWholeMessage(socket, callback) {
 
     while (savedBuffer.length >= 4 && savedBuffer.length >= msgLength()) {
       callback(savedBuffer.subarray(0, msgLength()));
-      savedBuffer = savedBuffer.subarray(msgLength());
+      savedBuffer = savedBuffer.subarray(msgLength()); // clear saved buffer
       handshake = false;
     }
   });
@@ -65,7 +66,7 @@ function onWholeMessage(socket, callback) {
 
 function messageHandler(msg, socket, pieces, queue, torrent, file) {
   if (isHandshake(msg)) {
-    console.log("===== handshake successfull ====");
+    console.log("\n===== handshake successfull =====\n");
 
     socket.write(message.buildInterested());
   } else {
@@ -74,27 +75,27 @@ function messageHandler(msg, socket, pieces, queue, torrent, file) {
 
     switch (parsedMsg.id) {
       case 0: {
-        console.log({ choked_msg_received: parsedMsg });
+        // console.log({ choked_msg_received: parsedMsg });
         chokeHandler(socket);
         break;
       }
       case 1: {
-        console.log({ unchoked_msg_received: parsedMsg });
+        // console.log({ unchoked_msg_received: parsedMsg });
         unchokeHandler(socket, pieces, queue);
         break;
       }
       case 4: {
-        console.log({ have_msg_received: parsedMsg });
+        // console.log({ have_msg_received: parsedMsg });
         haveHandler(socket, pieces, queue, parsedMsg.payload);
         break;
       }
       case 5: {
-        console.log({ bitfield_msg_received: parsedMsg });
+        // console.log({ bitfield_msg_received: parsedMsg });
         bitfieldHandler(socket, pieces, queue, parsedMsg.payload);
         break;
       }
       case 7: {
-        console.log({ pieceblock_msg_received: parsedMsg });
+        // console.log({ pieceblock_msg_received: parsedMsg });
         pieceHandler(socket, pieces, queue, torrent, file, parsedMsg.payload);
         break;
       }
@@ -132,7 +133,7 @@ function bitfieldHandler(socket, pieces, queue, payload) {
 
   payload.forEach((byte, i) => {
     for (let j = 0; j < 8; j++) {
-      if (byte % 2) queue.queue(i * 8 + 7 - j);
+      if (byte % 2) queue.queue(i * 8 + 7 - j); // if the bit is set bit enqueue the piece
       byte = Math.floor(byte / 2);
     }
   });
@@ -141,9 +142,9 @@ function bitfieldHandler(socket, pieces, queue, payload) {
 }
 
 function pieceHandler(socket, pieces, queue, torrent, file, pieceBlock) {
-  console.log(
-    "===== received a block at piece index: " + pieceBlock.index + " ====="
-  );
+  // console.log(
+  //   "===== received a block at piece index: " + pieceBlock.index + " ====="
+  // );
 
   pieces.addReceived(pieceBlock);
 
@@ -160,7 +161,7 @@ function pieceHandler(socket, pieces, queue, torrent, file, pieceBlock) {
   );
 
   if (pieces.isDone()) {
-    console.log("********** DOWNLOAD COMPLETE **********");
+    console.log("\n********** DOWNLOAD COMPLETE **********");
     socket.end();
     try {
       fs.closeSync(file);
@@ -168,12 +169,10 @@ function pieceHandler(socket, pieces, queue, torrent, file, pieceBlock) {
       console.log({ error_while_closing_file: err });
     }
   } else {
-    console.log("********** NOT DONE YET **********");
-    console.log({
-      pieceIndex: pieceBlock.index,
-      totalBlocks: pieces.totalBlocks(),
-      totalReceivedBlocks: pieces.totalReceivedBlocks(),
-    });
+    `downloading... ${(
+      (pieces.totalReceivedBlocks() / pieces.totalBlocks()) *
+      100
+    ).toPrecision(3)}%`;
     requestPiece(socket, pieces, queue);
   }
 }
@@ -182,11 +181,12 @@ function requestPiece(socket, pieces, queue) {
   if (queue.choked) return null;
 
   while (queue.length()) {
-    const pieceBlock = queue.deque();
+    const pieceBlock = queue.deque(); // pick first piece from queue
     if (pieces.needed(pieceBlock)) {
-      console.log("===== requesting piece block =====", pieceBlock);
-      socket.write(message.buildRequest(pieceBlock));
-      pieces.addRequested(pieceBlock);
+      // if the piece is not requested yet
+      // console.log("\n===== requesting piece block =====", pieceBlock);
+      socket.write(message.buildRequest(pieceBlock)); // request the piece
+      pieces.addRequested(pieceBlock); // add it to the requested pieces array
       break;
     }
   }

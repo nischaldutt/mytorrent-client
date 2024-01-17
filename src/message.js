@@ -162,7 +162,7 @@ export function buildHave(payload) {
  * Spare bits at the end are set to zero.
  */
 export function buildBitfield(payload) {
-  const buf = Buffer.alloc(14);
+  const buf = Buffer.alloc(payload.length + 1 + 4);
 
   // length of the message
   buf.writeUInt32BE(1 + payload.length, 0);

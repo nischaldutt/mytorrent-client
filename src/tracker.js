@@ -11,7 +11,7 @@ import * as torrentParser from "./torrent-parser.js";
 export const getPeers = (torrent, callback) => {
   const socket = dgram.createSocket("udp4");
   const torrentUrlObj = new URL(new TextDecoder().decode(torrent.announce));
-  console.log({ torrentUrlObj });
+  // console.log({ torrentUrlObj });
 
   // 1. send connect request
   udpSend(socket, buildConnectReq(), torrentUrlObj);
@@ -20,7 +20,7 @@ export const getPeers = (torrent, callback) => {
     if (respType(response) === "connect") {
       // 2. receive and parse the connect response
       const connResp = parseConnectResp(response);
-      console.log("===== received connect response =====", connResp);
+      console.log("\n===== received connect response =====\n", connResp);
 
       // 3. send announce request
       const announceReq = buildAnnounceReq(connResp.connectionId, torrent);
@@ -28,7 +28,7 @@ export const getPeers = (torrent, callback) => {
     } else if (respType(response) === "announce") {
       // 4. parse announce response
       const announceResp = parseAnnounceResp(response);
-      console.log("===== received announce response =====", announceResp);
+      console.log("\n===== received announce response =====\n", announceResp);
 
       // 5. pass peers to callback
       callback(announceResp.peers);
@@ -117,7 +117,7 @@ function buildAnnounceReq(connId, torrent, port = 6881) {
 
   // ip address
   // 0 default
-  buf.writeUInt32BE(0, 80);
+  buf.writeUInt32BE(0, 84);
 
   // key
   crypto.randomBytes(4).copy(buf, 88);
