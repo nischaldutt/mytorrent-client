@@ -7,13 +7,16 @@ import * as tracker from "./tracker.js";
 import * as message from "./message.js";
 
 export default function (torrent) {
+  const requested = [];
+
   tracker.getPeers(torrent, (peers) => {
-    peers.forEach((peer) => download(peer, torrent));
+    peers.forEach((peer) => download(peer, torrent, requested));
   });
 }
 
-function download(peer, torrent) {
+function download(peer, torrent, requested) {
   const socket = net.Socket();
+  const queue = [];
 
   socket.on("error", console.log);
 
@@ -22,7 +25,7 @@ function download(peer, torrent) {
   });
 
   onWholeMessage(socket, (msg) => {
-    messageHandler(msg, socket);
+    messageHandler(msg, socket, requested, queue);
   });
 }
 
@@ -46,7 +49,7 @@ function onWholeMessage(socket, callback) {
   });
 }
 
-function messageHandler(msg, socket) {
+function messageHandler(msg, socket, requested, queue) {
   if (isHandshake(msg)) {
     socket.write(message.buildInterested());
   } else {
@@ -62,7 +65,7 @@ function messageHandler(msg, socket) {
         break;
       }
       case 4: {
-        haveHandler(parsedMsg.payload);
+        haveHandler(parsedMsg.payload, socket, requested, queue);
         break;
       }
       case 5: {
@@ -70,7 +73,7 @@ function messageHandler(msg, socket) {
         break;
       }
       case 7: {
-        pieceHandler(parsedMsg.payload);
+        pieceHandler(parsedMsg.payload, socket, requested, queue);
         break;
       }
     }
@@ -88,8 +91,31 @@ function chokeHandler() {}
 
 function unchokeHandler() {}
 
-function haveHandler(payload) {}
+function haveHandler(payload, socket, requested, queue) {
+  const pieceIndex = payload.readUInt32BE(0);
+
+  queue.push(pieceIndex);
+  if (queue.length === 1) {
+    requestPiece(socket, requested, queue);
+  }
+
+  if (!requested[pieceIndex]) {
+    // socket.write(message.buildRequest(payload));
+  }
+  requested[pieceIndex] = true;
+}
 
 function bitfieldHandler(payload) {}
 
-function pieceHandler(payload) {}
+function pieceHandler(payload, socket, requested, queue) {
+  queue.shift();
+  requestPiece(socket, requested, queue);
+}
+
+function requestPiece(socket, requested, queue) {
+  if (requested[queue[0]]) {
+    queue.shift();
+  } else {
+    socket.write(message.buildRequest(pieceIndex));
+  }
+}
