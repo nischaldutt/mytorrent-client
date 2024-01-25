@@ -23,6 +23,13 @@ export default class Pieces {
 
     this._requested = buildPiecesArray();
     this._received = buildPiecesArray();
+
+    this.totalBlocks = this._requested
+      .map((piece) => {
+        return piece.reduce((count, _) => count + 1, 0);
+      })
+      .reduce((acc, curr) => acc + curr, 0);
+    this.totalReceivedBlocks = 0;
   }
 
   addRequested(pieceBlock) {
@@ -33,6 +40,7 @@ export default class Pieces {
   addReceived(pieceBlock) {
     const blockIndex = pieceBlock.begin / torrentParser.BLOCK_LENGTH;
     this._received[pieceBlock.index][blockIndex] = true;
+    this.totalReceivedBlocks = this.totalReceivedBlocks + 1;
   }
 
   needed(pieceBlock) {
@@ -49,24 +57,5 @@ export default class Pieces {
 
   isDone() {
     return this._received.every((blocks) => blocks.every((i) => i));
-  }
-
-  totalBlocks() {
-    const flat = this._requested.map((piece) => {
-      return piece.reduce((count, _) => count + 1, 0);
-    });
-
-    return flat.reduce((acc, curr) => acc + curr, 0);
-  }
-
-  totalReceivedBlocks() {
-    const flat = this._received.map((piece) => {
-      return piece.reduce(
-        (count, blockStatus) => (blockStatus ? count + 1 : count),
-        0
-      );
-    });
-
-    return flat.reduce((acc, curr) => acc + curr, 0);
   }
 }

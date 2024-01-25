@@ -11,13 +11,38 @@ import Queue from "./Queue.js";
 
 export default function (torrent, path) {
   tracker.getPeers(torrent, (peers) => {
-    // console.log({ peers });
+    console.log(torrent.info.files);
 
     const pieces = new Pieces(torrent);
     // console.log("\n====== initial pieces arrray =====", pieces);
 
-    const file = fs.openSync(path, "w");
-    peers.forEach((peer) => download(peer, torrent, pieces, file));
+    fs.mkdir(path, (err) => {
+      if (err) {
+        console.log({ error_while_creating_download_directory: err });
+        return;
+      }
+    });
+
+    // todo: take into account the file structure where file are present in
+    // the direcories recursively
+
+    const nFiles = torrent.info.files.length;
+    for (let i = 0; i < nFiles; i++) {
+      const directorypath = new TextDecoder().decode(path);
+      const filename = new TextDecoder().decode(torrent.info.files[i].path[0]);
+      const filepath = `${directorypath}/${filename}`;
+
+      console.log(filepath);
+
+      fs.open(filepath, "w", (err, fileDescriptor) => {
+        peers.forEach((peer) => {
+          download(peer, torrent, pieces, fileDescriptor);
+        });
+      });
+    }
+
+    // const file = fs.openSync(path, "w");
+    // peers.forEach((peer) => download(peer, torrent, pieces, file));
   });
 }
 
@@ -66,7 +91,7 @@ function onWholeMessage(socket, callback) {
 
 function messageHandler(msg, socket, pieces, queue, torrent, file) {
   if (isHandshake(msg)) {
-    console.log("\n===== handshake successfull =====\n");
+    // console.log("\n===== handshake successfull =====\n");
 
     socket.write(message.buildInterested());
   } else {
@@ -142,9 +167,7 @@ function bitfieldHandler(socket, pieces, queue, payload) {
 }
 
 function pieceHandler(socket, pieces, queue, torrent, file, pieceBlock) {
-  // console.log(
-  //   "===== received a block at piece index: " + pieceBlock.index + " ====="
-  // );
+  // console.log({ pieceBlock });
 
   pieces.addReceived(pieceBlock);
 
@@ -165,14 +188,19 @@ function pieceHandler(socket, pieces, queue, torrent, file, pieceBlock) {
     socket.end();
     try {
       fs.closeSync(file);
+      process.exit(0);
     } catch (err) {
       console.log({ error_while_closing_file: err });
     }
   } else {
-    `downloading... ${(
-      (pieces.totalReceivedBlocks() / pieces.totalBlocks()) *
-      100
-    ).toPrecision(3)}%`;
+    process.stdout.write(
+      `downloading... ${(
+        (pieces.totalReceivedBlocks / pieces.totalBlocks) *
+        100
+      ).toPrecision(3)}%`
+    );
+    process.stdout.cursorTo(0);
+
     requestPiece(socket, pieces, queue);
   }
 }
