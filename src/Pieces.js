@@ -4,6 +4,21 @@ import * as torrentParser from "./torrent-parser.js";
 
 export default class Pieces {
   constructor(torrent) {
+    function calculateTotalPieces() {
+      let totalPieces = 0;
+      const nFiles = torrent.info.files.length;
+
+      for (let i = 0; i < nFiles; i++) {
+        const fileLength = torrent.info.files[i].length;
+        const piecesInFile = Math.ceil(
+          fileLength / torrent.info["piece length"]
+        );
+        totalPieces += piecesInFile;
+      }
+
+      return totalPieces;
+    }
+
     /*
      *  @returns
      *  an array of arrays, where the inner arrays hold the status
@@ -14,7 +29,7 @@ export default class Pieces {
     function buildPiecesArray() {
       // torrent.info.pieces is a buffer that contains 20-byte SHA-1 hash of each piece,
       // and the length gives you the total number of bytes in the buffer.
-      const nPieces = torrent.info.pieces.length / 20;
+      const nPieces = calculateTotalPieces(); // torrent.info.pieces.length / 20;
       const arr = new Array(nPieces).fill(null);
       return arr.map((_, i) =>
         new Array(torrentParser.blocksPerPiece(torrent, i)).fill(false)
@@ -57,5 +72,9 @@ export default class Pieces {
 
   isDone() {
     return this._received.every((blocks) => blocks.every((i) => i));
+  }
+
+  isPieceComplete(pieceIndex) {
+    return this._received[pieceIndex].every((block) => block);
   }
 }

@@ -26,27 +26,44 @@ export default function (torrent, path) {
     // todo: take into account the file structure where file are present in
     // the direcories recursively
 
-    const nFiles = torrent.info.files.length;
-    for (let i = 0; i < nFiles; i++) {
-      const directorypath = new TextDecoder().decode(path);
-      const filename = new TextDecoder().decode(torrent.info.files[i].path[0]);
-      const filepath = `${directorypath}/${filename}`;
+    const files = initializeFiles(torrent, path);
+    console.log({ files });
+    files.forEach((file) => {
+      file.descriptor = fs.openSync(file.path, "w");
+    });
 
-      console.log(filepath);
-
-      fs.open(filepath, "w", (err, fileDescriptor) => {
-        peers.forEach((peer) => {
-          download(peer, torrent, pieces, fileDescriptor);
-        });
-      });
-    }
-
-    // const file = fs.openSync(path, "w");
-    // peers.forEach((peer) => download(peer, torrent, pieces, file));
+    peers.forEach((peer) => download(peer, torrent, pieces, files));
   });
 }
 
-function download(peer, torrent, pieces, file) {
+function initializeFiles(torrent, path) {
+  const files = [];
+  const nFiles = torrent.info.files.length;
+  const directorypath = new TextDecoder().decode(path);
+
+  let offset = 0;
+
+  for (let i = 0; i < nFiles; i++) {
+    const filename = new TextDecoder().decode(torrent.info.files[i].path[0]);
+    const filepath = `${directorypath}/${filename}`;
+    const fileLength = torrent.info.files[i].length;
+
+    files.push({
+      path: filepath,
+      length: fileLength,
+      descriptor: null,
+      offset: offset,
+    });
+
+    // calculate the starting piece index for each file based on the
+    // cumulative piece indices of the preceding files
+    offset += Math.floor(fileLength / torrent.info["piece length"]);
+  }
+
+  return files;
+}
+
+function download(peer, torrent, pieces, files) {
   const socket = new net.Socket();
 
   socket.on("error", (err) => {
@@ -64,7 +81,7 @@ function download(peer, torrent, pieces, file) {
 
   onWholeMessage(socket, (msg) => {
     // console.log("\n******* received complete message *******\n");
-    messageHandler(msg, socket, pieces, queue, torrent, file);
+    messageHandler(msg, socket, pieces, queue, torrent, files);
   });
 }
 
@@ -72,14 +89,14 @@ function onWholeMessage(socket, callback) {
   let savedBuffer = Buffer.alloc(0);
   let handshake = true;
 
-  socket.on("data", (recievedBuffer) => {
+  socket.on("data", (receivedBuffer) => {
     // msgLength calculates the length of whole message in bytes
     function msgLength() {
       return handshake
         ? savedBuffer.readUInt8(0) + 49
         : savedBuffer.readInt32BE(0) + 4;
     }
-    savedBuffer = Buffer.concat([savedBuffer, recievedBuffer]);
+    savedBuffer = Buffer.concat([savedBuffer, receivedBuffer]);
 
     while (savedBuffer.length >= 4 && savedBuffer.length >= msgLength()) {
       callback(savedBuffer.subarray(0, msgLength()));
@@ -89,7 +106,7 @@ function onWholeMessage(socket, callback) {
   });
 }
 
-function messageHandler(msg, socket, pieces, queue, torrent, file) {
+function messageHandler(msg, socket, pieces, queue, torrent, files) {
   if (isHandshake(msg)) {
     // console.log("\n===== handshake successfull =====\n");
 
@@ -121,7 +138,7 @@ function messageHandler(msg, socket, pieces, queue, torrent, file) {
       }
       case 7: {
         // console.log({ pieceblock_msg_received: parsedMsg });
-        pieceHandler(socket, pieces, queue, torrent, file, parsedMsg.payload);
+        pieceHandler(socket, pieces, queue, torrent, files, parsedMsg.payload);
         break;
       }
     }
@@ -166,16 +183,25 @@ function bitfieldHandler(socket, pieces, queue, payload) {
   if (queueEmpty) requestPiece(socket, pieces, queue);
 }
 
-function pieceHandler(socket, pieces, queue, torrent, file, pieceBlock) {
-  // console.log({ pieceBlock });
+function pieceHandler(socket, pieces, queue, torrent, files, pieceBlock) {
+  const fileIndex = findFileIndex(torrent, files, pieceBlock.index);
+
+  console.log({ fileIndex, pieceBlock });
+
+  const file = files[fileIndex];
+  // calculate relative piece index within the file
+  const relativePieceIndex = pieceBlock.index - file.offset;
 
   pieces.addReceived(pieceBlock);
 
   // write to file here
   const offset =
-    pieceBlock.index * torrent.info["piece length"] + pieceBlock.begin;
+    file.offset +
+    relativePieceIndex * torrent.info["piece length"] +
+    pieceBlock.begin;
+
   fs.write(
-    file,
+    file.descriptor,
     pieceBlock.block,
     0,
     pieceBlock.block.length,
@@ -187,7 +213,7 @@ function pieceHandler(socket, pieces, queue, torrent, file, pieceBlock) {
     console.log("\n********** DOWNLOAD COMPLETE **********");
     socket.end();
     try {
-      fs.closeSync(file);
+      fs.closeSync(file.descriptor);
       process.exit(0);
     } catch (err) {
       console.log({ error_while_closing_file: err });
@@ -203,6 +229,23 @@ function pieceHandler(socket, pieces, queue, torrent, file, pieceBlock) {
 
     requestPiece(socket, pieces, queue);
   }
+}
+
+function findFileIndex(torrent, files, pieceIndex) {
+  let offset = 0;
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const piecesInFile = Math.ceil(file.length / torrent.info["piece length"]);
+
+    if (pieceIndex < offset + piecesInFile) {
+      return i;
+    }
+
+    offset += piecesInFile;
+  }
+
+  return -1; // error: piece index does not correspond to any file
 }
 
 function requestPiece(socket, pieces, queue) {
