@@ -1,8 +1,14 @@
-# BitTorrent Client in Node.js
+<div>
+  <h1 align="center">
+    <a href="https://github.com/nischaldutt/mytorrent-client/">BitTorrent Client in Node.js</a>
+  </h1>
+</div>
 
 ## Overview
 
 This project is a BitTorrent client implemented in Node.js, allowing users to download files from torrent files. It supports peer-to-peer file sharing with features like torrent file parsing, peer connection establishment, and piece management, it provides an efficient and reliable way to download files from the BitTorrent network using a job queue. Whether you're a developer exploring the BitTorrent protocol or a user seeking a customizable torrent client, this project is open for improvements and feedback.
+
+## [Open in Visual Studio Code 👨‍💻](https://vscode.dev/github.com/nischaldutt/mytorrent-client)
 
 ## Features
 
